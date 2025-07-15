@@ -50,9 +50,10 @@ async def get_gpt_response(text: str) -> str:
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant on a Raspberry Pi. Be concise."},
+                {"role": "system", "content": "Speak softly and cutely, adding gentle laughter..."},
                 {"role": "user", "content": text},
             ],
+            temperature=0.8, # more creative styling
         )
         return response.choices[0].message.content or ""
     except Exception as e:
