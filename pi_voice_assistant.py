@@ -3,6 +3,7 @@ import os
 import numpy as np
 import sounddevice as sd
 from openai import AsyncOpenAI
+import soundfile as sf
 
 # --- Configuration ---
 API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -12,7 +13,7 @@ if not API_KEY:
 client = AsyncOpenAI(api_key=API_KEY)
 
 # Audio settings
-SAMPLE_RATE = 24000
+SAMPLE_RATE = 16000  # OpenAI's recommended sample rate for their STT
 CHANNELS = 1
 FORMAT = np.int16
 CHUNK_LENGTH_S = 0.5  # 500ms
@@ -21,32 +22,35 @@ SILENCE_THRESHOLD_S = 2.0  # Seconds of silence to end recording
 
 # --- Core Components ---
 
-async def transcribe_audio(audio_data: np.ndarray) -> str:
-    """Transcribes audio data using OpenAI's STT."""
+async def play_tts_response(text: str):
+    """Plays back text using OpenAI's TTS."""
+    if not text:
+        return
     try:
-        # Save the NumPy array as a temporary WAV file
-        import soundfile as sf
-        temp_file_path = "temp_recording.wav"
-        sf.write(temp_file_path, audio_data, SAMPLE_RATE)
+        response = await client.audio.speech.create(
+            model="tts-1",
+            voice="shimmer",
+            input=text,
+        )
+        # Assuming the TTS API returns audio that can be played back at 24kHz
+        playback_samplerate = 24000
+        audio_data = np.frombuffer(response.content, dtype=np.int16)
 
-        with open(temp_file_path, "rb") as audio_file:
-            transcription = await client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-            )
-        os.remove(temp_file_path)
-        return transcription.text
+        with sd.OutputStream(samplerate=playback_samplerate, channels=CHANNELS, dtype='int16') as stream:
+            stream.write(audio_data)
+
     except Exception as e:
-        print(f"Error during transcription: {e}")
-        return ""
+        print(f"Error during TTS playback: {e}")
 
 async def get_gpt_response(text: str) -> str:
     """Gets a response from GPT-4o-mini."""
+    if not text:
+        return ""
     try:
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant on a Raspberry Pi."},
+                {"role": "system", "content": "You are a helpful assistant on a Raspberry Pi. Be concise."},
                 {"role": "user", "content": text},
             ],
         )
@@ -54,23 +58,6 @@ async def get_gpt_response(text: str) -> str:
     except Exception as e:
         print(f"Error getting GPT response: {e}")
         return "I'm sorry, I had a problem processing that."
-
-async def play_tts_response(text: str):
-    """Plays back text using OpenAI's TTS."""
-    try:
-        response = await client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=text,
-        )
-        audio_data = np.frombuffer(response.content, dtype=np.int16)
-
-        with sd.OutputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype='int16') as stream:
-            stream.write(audio_data)
-
-    except Exception as e:
-        print(f"Error during TTS playback: {e}")
-
 
 # --- Main Application Logic ---
 
@@ -109,7 +96,6 @@ async def listen_and_process():
                 blocksize=int(SAMPLE_RATE * CHUNK_LENGTH_S),
                 callback=callback
             ):
-                # This will run until CallbackStop is raised
                 while True:
                     await asyncio.sleep(0.1)
         except sd.CallbackStop:
@@ -119,19 +105,23 @@ async def listen_and_process():
             print("No audio recorded.")
             continue
 
-        # Process the recorded audio
         audio_data = np.concatenate(recorded_frames, axis=0)
         
-        print("Transcribing audio...")
-        transcription = await transcribe_audio(audio_data)
-        print(f"You said: {transcription}")
+        temp_file_path = "temp_recording.wav"
+        sf.write(temp_file_path, audio_data, SAMPLE_RATE)
 
-        if transcription:
-            print("Getting response from GPT...")
-            gpt_response = await get_gpt_response(transcription)
+        with open(temp_file_path, "rb") as audio_file:
+            transcription = await client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+            )
+        os.remove(temp_file_path)
+        
+        print(f"You said: {transcription.text}")
+
+        if transcription.text:
+            gpt_response = await get_gpt_response(transcription.text)
             print(f"GPT says: {gpt_response}")
-
-            print("Playing response...")
             await play_tts_response(gpt_response)
 
 async def main():
