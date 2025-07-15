@@ -72,9 +72,13 @@ async def listen_and_process():
         recorded_frames = []
         is_recording = False
         silence_counter = 0
+        recording_finished = asyncio.Event()
         
         def callback(indata, frames, time, status):
             nonlocal is_recording, silence_counter, recorded_frames
+            if status:
+                print(f"Stream status: {status}")
+
             volume_norm = np.linalg.norm(indata) * 10
             
             if volume_norm > RECORDING_THRESHOLD:
@@ -87,6 +91,8 @@ async def listen_and_process():
                 silence_counter += 1
                 num_silent_chunks = int(SILENCE_THRESHOLD_S / CHUNK_LENGTH_S)
                 if silence_counter > num_silent_chunks:
+                    loop = asyncio.get_running_loop()
+                    loop.call_soon_threadsafe(recording_finished.set)
                     raise sd.CallbackStop
 
         try:
@@ -97,10 +103,11 @@ async def listen_and_process():
                 blocksize=int(SAMPLE_RATE * CHUNK_LENGTH_S),
                 callback=callback
             ):
-                while True:
-                    await asyncio.sleep(0.1)
-        except sd.CallbackStop:
-            print("Recording stopped due to silence.")
+                await recording_finished.wait()
+        except Exception as e:
+            print(f"An error occurred during recording: {e}")
+
+        print("Recording stopped due to silence.")
 
         if not recorded_frames:
             print("No audio recorded.")
