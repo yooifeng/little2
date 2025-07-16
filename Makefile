@@ -18,6 +18,9 @@ install:
 run:
 	$(PYTHON) pi_voice_assistant.py
 
+run2:  
+	$(PYTHON) pi_voice_2.py
+
 # Target to clean up temporary files 🧹
 clean:
 	rm -f temp_command.wav
