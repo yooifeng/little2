@@ -22,6 +22,11 @@ RECORDING_THRESHOLD = 0.02  # Adjust as needed
 SILENCE_THRESHOLD_S = 2.0  # Seconds of silence to end recording
 PLAYBACK_SAMPLERATE = 24000 # OpenAI TTS playback sample rate
 
+# --- Device Configuration ---
+CARD_ID = os.environ.get("CARD_ID")
+MIC_ID = os.environ.get("MIC_ID")
+PLAYBACK_ID = os.environ.get("PLAYBACK_ID")
+
 # --- Core Components ---
 
 async def play_tts_stream(text_stream):
@@ -32,7 +37,7 @@ async def play_tts_stream(text_stream):
         async with websockets.connect(uri) as websocket:
             await websocket.send(f'{{"model": "tts-1-hd", "voice": "shimmer", "input": "{await text_stream.__anext__()}"}}')
 
-            with sd.OutputStream(samplerate=PLAYBACK_SAMPLERATE, channels=CHANNELS, dtype='int16') as stream:
+            with sd.OutputStream(samplerate=PLAYBACK_SAMPLERATE, channels=CHANNELS, dtype='int16', device=PLAYBACK_ID) as stream:
                 async for message in websocket:
                     # Assuming the message is raw audio data
                     audio_data = np.frombuffer(message, dtype=np.int16)
@@ -105,7 +110,8 @@ async def listen_and_process():
                 channels=CHANNELS,
                 dtype=FORMAT,
                 blocksize=int(SAMPLE_RATE * CHUNK_LENGTH_S),
-                callback=callback
+                callback=callback,
+                device=MIC_ID
             ):
                 await recording_finished.wait()
         except Exception as e:
@@ -135,6 +141,11 @@ async def listen_and_process():
             gpt_response_stream = get_gpt_response_stream(transcription.text)
             await play_tts_stream(gpt_response_stream)
 
+def list_audio_devices():
+    """Lists available audio devices."""
+    print("Available audio devices:")
+    print(sd.query_devices())
+
 async def main():
     # Check for necessary dependencies
     try:
@@ -145,10 +156,28 @@ async def main():
         print("Please install the required libraries: pip install sounddevice soundfile websockets")
         return
 
+    list_audio_devices()
+
+    if CARD_ID:
+        try:
+            sd.default.device = int(CARD_ID)
+            print(f"Using sound card ID: {CARD_ID}")
+        except ValueError:
+            print(f"Invalid CARD_ID: {CARD_ID}. Using default device.")
+
+
     await listen_and_process()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nExiting voice assistant.")
+    import argparse
+    parser = argparse.ArgumentParser(description="Voice Assistant")
+    parser.add_argument('--list-devices', action='store_true', help='List available audio devices and exit.')
+    args = parser.parse_args()
+
+    if args.list_devices:
+        list_audio_devices()
+    else:
+        try:
+            asyncio.run(main())
+        except KeyboardInterrupt:
+            print("\nExiting voice assistant.")

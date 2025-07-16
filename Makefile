@@ -21,6 +21,9 @@ run:
 run2:  
 	$(PYTHON) pi_voice_2.py
 
+audio-list:
+	python3 pi_voice_2.py --list-devices
+
 # Target to clean up temporary files 🧹
 clean:
 	rm -f temp_command.wav
