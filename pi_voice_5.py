@@ -34,17 +34,20 @@ PLAYBACK_SAMPLERATE = 24000
 
 # --- Core Components ---
 
+# Replace the original function with this one
+# Replace the original function with this simplified and corrected version
 async def play_tts_stream(text_stream):
     """Synthesizes and plays audio using the gpt-4o-mini-tts model."""
     print("🤖 Assistant speaking...", end="", flush=True)
     try:
+        # Collect the full text response from the GPT stream
         full_response = "".join([chunk async for chunk in text_stream])
         print(f" \"{full_response}\"")
 
         if not full_response.strip():
             return
 
-        # --- UPDATED MODEL ---
+        # Request the audio from OpenAI's API
         response = await client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice="shimmer",
@@ -52,14 +55,13 @@ async def play_tts_stream(text_stream):
             response_format="pcm"
         )
 
-        with sd.OutputStream(
-            samplerate=PLAYBACK_SAMPLERATE,
-            channels=CHANNELS,
-            dtype=FORMAT,
-            device=PLAYBACK_ID
-        ) as stream:
-            async for chunk in response.iter_bytes(chunk_size=1024):
-                stream.write(np.frombuffer(chunk, dtype=FORMAT))
+        # --- CORRECTED PLAYBACK LOGIC ---
+        # Get the entire audio content at once
+        audio_data = np.frombuffer(response.content, dtype=FORMAT)
+
+        # Play the audio in a single, blocking call
+        sd.play(audio_data, samplerate=PLAYBACK_SAMPLERATE, device=PLAYBACK_ID)
+        sd.wait() # Wait for the playback to finish before continuing
 
     except Exception as e:
         print(f"\nError during TTS playback: {e}")
