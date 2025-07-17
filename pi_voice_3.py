@@ -3,6 +3,35 @@ import json
 import os
 import threading
 import time
+
+# Sequence Diagram for pi_voice_3.py
+#
+# ```mermaid
+# sequenceDiagram
+#     participant User
+#     participant Client
+#     participant Server
+#     
+#     Note over User,Client: Step 1: Initialize
+#     Client->>Server: Establish WebSocket connection
+#     Client->>Server: Authenticate
+#     
+#     Note over User,Client: Step 2: Capture Input
+#     User->>Client: Provide audio/text input
+#     
+#     Note over Client,Server: Step 3: Stream Audio
+#     Client->>Server: Send audio data in chunks
+#     
+#     Note over Client,Server: Step 4: Handle Responses
+#     Server->>Client: Send text chunks
+#     Server->>Client: Send final response
+#     Client->>User: Display or speak responses
+#     
+#     Note over Client,Server: Step 5: Error Handling & Cleanup
+#     Client->>Server: Handle disconnections
+#     Client->>Client: Cleanup resources
+# ```
+
 import sounddevice as sd
 import websocket
 

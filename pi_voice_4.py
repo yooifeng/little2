@@ -28,6 +28,7 @@ SESSION_CONFIG = {
             "silence_duration_ms": 600
         },
         "input_audio_transcription": {"model": "whisper-1"},
+        "model": "gpt-4o",
         "temperature": 0.7
     }
 }
@@ -87,4 +88,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

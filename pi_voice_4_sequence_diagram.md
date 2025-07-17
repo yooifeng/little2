@@ -1,6 +1,4 @@
-import os
 
-diagram_content = """
 ```mermaid
 sequenceDiagram
     participant User
@@ -22,11 +20,3 @@ sequenceDiagram
     VoiceAssistant->>SoundDevice: Plays received audio
     SoundDevice-->>User: Outputs audio
 ```
-"""
-
-file_path = os.path.join(os.path.dirname(__file__), 'pi_voice_4_sequence_diagram.md')
-
-with open(file_path, 'w') as f:
-    f.write(diagram_content)
-
-print(f"Sequence diagram created at {file_path}")
