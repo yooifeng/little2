@@ -2,4 +2,4 @@ openai
 sounddevice
 numpy
 soundfile
-websocket
+websocket-client

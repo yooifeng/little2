@@ -19,8 +19,8 @@ PLAYBACK_ID = os.environ.get("PLAYBACK_ID")
 
 # --- Audio Settings ---
 # --- FIX #1: Unify sample rates to prevent hardware conflict ---
-INPUT_SAMPLE_RATE = 24000 
-PLAYBACK_SAMPLERATE = 24000
+INPUT_SAMPLE_RATE = 16000 
+PLAYBACK_SAMPLERATE = 16000
 CHANNELS = 1
 DTYPE = "int16"
 
